@@ -6,7 +6,7 @@ import PIL.ImageChops
 import PIL.ImageOps
 from time import sleep
 import struct
-
+import argparse
 
 printerMACAddress = 'XX:XX:XX:XX:XX:XX'
 printerWidth = 384
@@ -45,7 +45,7 @@ def trimImage(im):
 
 def create_text(text, font_name="Lucon.ttf", font_size=12):
     img = PIL.Image.new('RGB', (printerWidth, 5000), color = (255, 255, 255))
-    font = PIL.ImageFont.truetype(font_name, font_size)
+    font = PIL.ImageFont.truetype(font_name, int(font_size))
     
     d = PIL.ImageDraw.Draw(img)
     lines = []
@@ -89,7 +89,7 @@ def printImage(soc, im):
         
     # if image width is not a multiple of 8 pixels, fix that
     if im.size[0] % 8:
-        im2 = Image.new('1', (im.size[0] + 8 - im.size[0] % 8, 
+        im2 = im.new('1', (im.size[0] + 8 - im.size[0] % 8, 
                         im.size[1]), 'white')
         im2.paste(im, (0, 0))
         im = im2
@@ -122,21 +122,20 @@ s = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
 s.connect((printerMACAddress,port))
 
 print("Connecting to printer...")
-getPrinterStatus(s)
-sleep(0.5)
-getPrinterSerialNumber(s)
-sleep(0.5)
-getPrinterProductInfo(s)
-sleep(0.5)
 
-#Read Image File
-img = PIL.Image.open("Turtle.jpg")
-
-#Create image from text
-#text = "Line 1\nLine 2\nLine 3"
-#img = create_text(text,font_size=65)
-
+parser = argparse.ArgumentParser('YHK Cat Printer. Choose either --text or --image')
+parser.add_argument("--text", '-t', help="text to print", required=False)
+parser.add_argument("-i", "--image", help="image to print")
+parser.add_argument("-f", "--font", help="font to use", default="Lucon.ttf")
+parser.add_argument("-s", "--size", help="font size", default=12)
+args = parser.parse_args()
+if not args.text and not args.image or (args.image and args.text):
+    parser.print_help()
+    exit()
+if args.image:
+    img = PIL.Image.open(args.image)
+else:
+    img = create_text(args.text, font_size=args.size)
 
 printImage(s,img)
 s.close()
-
